@@ -1,8 +1,13 @@
 ﻿namespace TotallyMoney.Api;
 
-public class PreferenceConverter : JsonConverter<OneOf<int, int[], bool>>
+public class PreferenceConverter : JsonConverter<OneOf<int, DayOfWeek[], bool>>
 {
-    public override OneOf<int, int[], bool> ReadJson(JsonReader reader, Type objectType, OneOf<int, int[], bool> existingValue, bool hasExistingValue, JsonSerializer serializer)
+    public override OneOf<int, DayOfWeek[], bool> ReadJson(
+        JsonReader reader, 
+        Type objectType, 
+        OneOf<int, DayOfWeek[], bool> existingValue, 
+        bool hasExistingValue, 
+        JsonSerializer serializer)
     {
         if (reader.TokenType != JsonToken.StartObject
             || !reader.Read()
@@ -29,7 +34,7 @@ public class PreferenceConverter : JsonConverter<OneOf<int, int[], bool>>
         return result;
     }
 
-    private OneOf<int, int[], bool> ReadSpecificDate(JsonReader reader)
+    private OneOf<int, DayOfWeek[], bool> ReadSpecificDate(JsonReader reader)
     {
         if (!reader.Read()
             || reader.TokenType != JsonToken.PropertyName
@@ -42,7 +47,7 @@ public class PreferenceConverter : JsonConverter<OneOf<int, int[], bool>>
         return (int)(long)reader.Value;
     }
 
-    private OneOf<int, int[], bool> ReadDaysOfWeek(JsonReader reader)
+    private OneOf<int, DayOfWeek[], bool> ReadDaysOfWeek(JsonReader reader)
     {
         if (!reader.Read()
             || reader.TokenType != JsonToken.PropertyName
@@ -53,24 +58,24 @@ public class PreferenceConverter : JsonConverter<OneOf<int, int[], bool>>
             throw new JsonSerializationException();
         }
 
-        var days = new List<int>();
+        var days = new List<DayOfWeek>();
 
         while (reader.Read() && reader.TokenType != JsonToken.EndArray)
         {
-            if (reader.TokenType != JsonToken.Integer)
+            if (reader.TokenType != JsonToken.String)
             {
-                days.Add((int)(long)reader.Value);
+                days.Add(Enum.Parse<DayOfWeek>((string)reader.Value, true));
             }
         }
 
         return days.ToArray();
     }
 
-    public override void WriteJson(JsonWriter writer, OneOf<int, int[], bool> value, JsonSerializer serializer)
+    public override void WriteJson(JsonWriter writer, OneOf<int, DayOfWeek[], bool> value, JsonSerializer serializer)
     {
         value.Switch(
             specificDate => serializer.Serialize(writer, new { type = "specificDate", specificDate = specificDate }),
-            daysOfWeek => serializer.Serialize(writer, new { type = "daysOfWeek", daysOfWeek = daysOfWeek }),
+            daysOfWeek => serializer.Serialize(writer, new { type = "daysOfWeek", daysOfWeek = daysOfWeek.Select(d => d.ToString()).ToArray() }),
             everyDay => serializer.Serialize(writer, new { type = everyDay ? "everyDay" : "never" })
         );
     }
